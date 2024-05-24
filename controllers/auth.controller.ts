@@ -2,12 +2,16 @@
 import { Request, Response } from "express";
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcrypt'
+import mongoose from 'mongoose'
 
+//ObjectId
+const ObjectId = mongoose.Types.ObjectId
 
 //Importing models
 import Doctors from "../models/doctors-data";
 import Users from "../models/user-data";
 import sendOTPEmail  from "../utils/nodemailer/nodemailer.service";
+import { decodeJwtToken } from "../middleware/jwt.service";
 
 
 //Generate the jwt token
@@ -18,6 +22,32 @@ const otpStorage: { [userId: string]: string } = {};
 
 export default {
 
+  //Handling the authentication 
+  authenticate: async (req:Request, res: Response) => {
+    const header = req.body.headers
+    try {
+      const decodedToken = decodeJwtToken(header.Authorization)//passing the token to decode and get the user details 
+      console.log(decodedToken);
+      
+      if (decodedToken) {
+        const userId = decodedToken.userId //retrieving the userId
+  
+        const user = await Users.findOne({ _id: new ObjectId( userId) }) //retrieving the user from database
+
+        if(user) {
+          return res.status(200).json({user})
+        }else {
+          return res.status(404).json({})
+        }
+      }
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({message: 'Invalid JWT token'})
+      
+    }   
+  },
+
+  //Handling signup request
   signupUser :  async (req:Request, res: Response) => {
     try{
       const {name,  email, password} = req.body //Retrieving the data from req.body
@@ -73,11 +103,18 @@ export default {
 
   //funcion for verifying the OTP and generating JWT token
   verifyOTP: async (req:Request, res: Response) => {
-    const { userId, otpValue } = req.body;
+    console.log(req.body);
+    
+    const { otpValue, userId } = req.body;
 
+  console.log(otpStorage);
+  
     //Check if the otp exist in the stroage
     const generatedOTP = otpStorage[userId]
-
+    console.log(generatedOTP);
+    
+    try {
+      
     if(!generatedOTP) {
       return res.status(400).json({ error: 'Invalid user ID or OTP' });
     }
@@ -88,7 +125,7 @@ export default {
     }
     
     //Changing the isVerified to true
-    const isVerified = await Doctors.findOneAndUpdate({_id: userId}, {isVerified: true}) || await Users.findByIdAndUpdate({_id: userId}, {isVerified: true})
+    const isVerified =  await Users.findByIdAndUpdate({_id: userId}, {isVerified: true})
 
     const jwtToken = jwt.sign({ userId }, secretKey as string, { expiresIn: '1h' });
 
@@ -96,13 +133,18 @@ export default {
     delete otpStorage[userId]
 
     return res.status(200).json({token: jwtToken})
+    } catch (error) {
+      console.log(error);
+      
+    }
+
 
   },
 
   //function for handling login request from user
   loginUser: async (req: Request, res: Response) => {
     //login data
-    const {email, pasword} = req.body;
+    const {email, password} = req.body;
 
     const userType: string = req.params['userType']//Retrieving userType
 
@@ -114,12 +156,18 @@ export default {
       }
 
       if(!userExist.isVerified) {
-        return res.status(401).json({message: 'Account need verification'})
+        const userId = userExist._id.toString() //retrieving the id from mongodb
+
+        const otp = await sendOTPEmail(email)//Send OTP function
+
+        // Store the OTP and user ID in the in-memory storage
+        otpStorage[userId] = otp
+        return res.status(201).json({message: 'Account need verification', userId, email: userExist.email})
       }
 
       const existPassword: string | undefined = userExist?.password //retrieving the password
       
-      const isPasswordCorrect = await bcrypt.compare(pasword, existPassword as string) //Comapring the password 
+      const isPasswordCorrect = await bcrypt.compare(password, existPassword ) //Comapring the password 
       
       if(!isPasswordCorrect) { //if password does not match return
         return res.status(400).json({message: 'Invalid Password'})
@@ -130,10 +178,39 @@ export default {
 
       return res.status(200).json({token: jwtToken})
     } catch (error) {
+      console.log(error);
+      
       //catching and handling the error
       return res.status(500).json({message: 'Server Error'})
     }
     
+  },
+
+  //function for verifying email
+  verifyEmail: async (req: Request, res:Response) => {
+    const {name, email} = req.body.constultForm
+
+   try {
+     //checking if user already exist 
+     const userExist = await Users.findOne({email}) || Doctors.findOne({email})
+
+     const newUser = new Users({ //create a new user 
+       name,
+       email
+     })
+     const saveUser = await newUser.save()
+     const userId = saveUser._id.toString()//id for storing otp
+ 
+     const otp = await sendOTPEmail(email)
+     otpStorage[userId] = otp //storing the otp to verify
+     console.log(otpStorage);
+     
+
+     res.status(200).json({message: 'Otp Sented', userId})
+   } catch (error) {
+    console.log(error)
+    res.status(500).json({message: 'Server Error'})
+   }
   }
 }
 
