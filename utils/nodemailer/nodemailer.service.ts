@@ -4,7 +4,8 @@ export const sendOTPEmail = async  (recipientEmail: string): Promise<any>  => {
 
   try {
     const otp = generatedOTP()
-  
+    console.log(otp);
+    
     // Email options
     const mailOptions: MailOptions = {
       from: 'basithkccr7@gmail.com', // Sender's email address

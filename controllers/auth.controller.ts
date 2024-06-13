@@ -27,13 +27,12 @@ export default {
     const header = req.body.headers
     try {
       const decodedToken = decodeJwtToken(header.Authorization)//passing the token to decode and get the user details 
-      console.log(decodedToken);
       
       if (decodedToken) {
         const userId = decodedToken.userId //retrieving the userId
   
-        const user = await Users.findOne({ _id: new ObjectId( userId) }) //retrieving the user from database
-
+        const user = await Users.findOne({ _id: new ObjectId( userId) }) || await Doctors.findOne({_id: userId}) //retrieving the user from database
+        
         if(user) {
           return res.status(200).json({user})
         }else {
@@ -69,7 +68,7 @@ export default {
           name,
           email,
           password})
-        const savedDoctor = await newDoctor.save()
+        const savedDoctor: any = await newDoctor.save()
         const userId = savedDoctor._id.toString() //retrieving the id from mongodb
 
         otp = await sendOTPEmail(email)//Send OTP function
@@ -102,17 +101,13 @@ export default {
   },
 
   //funcion for verifying the OTP and generating JWT token
-  verifyOTP: async (req:Request, res: Response) => {
-    console.log(req.body);
-    
+  verifyOTP: async (req:Request, res: Response) => { 
     const { otpValue, userId } = req.body;
-
-  console.log(otpStorage);
+    console.log(userId);
+    
   
     //Check if the otp exist in the stroage
-    const generatedOTP = otpStorage[userId]
-    console.log(generatedOTP);
-    
+    const generatedOTP = otpStorage[userId]    
     try {
       
     if(!generatedOTP) {
@@ -125,7 +120,8 @@ export default {
     }
     
     //Changing the isVerified to true
-    const isVerified =  await Users.findByIdAndUpdate({_id: userId}, {isVerified: true})
+    const isVerified =  await Users.findOneAndUpdate({_id: userId}, {isVerified: true}) || await Doctors.findOneAndUpdate({_id: userId}, {isVerified: true})
+                             
 
     const jwtToken = jwt.sign({ userId }, secretKey as string, { expiresIn: '1h' });
 
@@ -138,7 +134,6 @@ export default {
       
     }
 
-
   },
 
   //function for handling login request from user
@@ -146,10 +141,8 @@ export default {
     //login data
     const {email, password} = req.body;
 
-    const userType: string = req.params['userType']//Retrieving userType
-
     try {
-      const userExist = await Doctors.findOne({email}) || await Users.findOne({email}) //Checking if user exist
+      const userExist: any = await Doctors.findOne({email}) || await Users.findOne({email}) //Checking if user exist
 
       if(!userExist) { //If no user return
         return res.status(400).json({message: 'Account does not exist, Please Register'})
@@ -167,7 +160,7 @@ export default {
 
       const existPassword: string | undefined = userExist?.password //retrieving the password
       
-      const isPasswordCorrect = await bcrypt.compare(password, existPassword ) //Comapring the password 
+      const isPasswordCorrect = await bcrypt.compare(password, existPassword as string ) //Comapring the password 
       
       if(!isPasswordCorrect) { //if password does not match return
         return res.status(400).json({message: 'Invalid Password'})
@@ -202,9 +195,7 @@ export default {
      const userId = saveUser._id.toString()//id for storing otp
  
      const otp = await sendOTPEmail(email)
-     otpStorage[userId] = otp //storing the otp to verify
-     console.log(otpStorage);
-     
+     otpStorage[userId] = otp //storing the otp to verify     
 
      res.status(200).json({message: 'Otp Sented', userId})
    } catch (error) {

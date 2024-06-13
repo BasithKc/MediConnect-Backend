@@ -7,7 +7,6 @@ const secretKey = process.env['JWT_SECRET_KEY']
 export function decodeJwtToken (token: string) {
   try {
     const decodedToken: any = jwt.decode(token)
-    console.log(decodedToken);
     
     return decodedToken
   } catch (error) {

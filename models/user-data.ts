@@ -5,14 +5,19 @@ interface userData extends Document{
   name:string,
   email:string,
   password: string,
-  isVerified: boolean
+  isVerified: boolean,
+  role: string
 }
 
 const UserSchema:Schema = new mongoose.Schema<userData>({
   name: { type : String , required: true },
   email:{type:String,required:true},
   password:{type:String},
-  isVerified:{type:Boolean,default:false}
+  isVerified:{type:Boolean,default:false},
+  role: {
+    type: String,
+    default: 'user'
+  }
 });
 
 // Pre-save middleware to hash the password
