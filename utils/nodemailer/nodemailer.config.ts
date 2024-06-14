@@ -1,4 +1,4 @@
-import * as nodemailer from 'nodemailer'
+import  nodemailer from 'nodemailer'
 
 const pass = process.env['EMAIL_PASSWORD']
 // Create a transporter object

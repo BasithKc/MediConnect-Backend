@@ -1,7 +1,8 @@
 import mongoose, { Document, Schema, CallbackError } from "mongoose";
 import bcrypt from 'bcrypt'
 
-interface userData extends Document{
+export interface userData extends Document{
+  _id: string
   name:string,
   email:string,
   password: string,

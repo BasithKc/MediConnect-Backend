@@ -2,14 +2,15 @@
 import { Request, Response } from "express";
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcrypt'
-import mongoose from 'mongoose'
+import mongoose, { Document} from 'mongoose'
+
 
 //ObjectId
 const ObjectId = mongoose.Types.ObjectId
 
 //Importing models
 import Doctors from "../models/doctors-data";
-import Users from "../models/user-data";
+import Users, { userData } from "../models/user-data";
 import sendOTPEmail  from "../utils/nodemailer/nodemailer.service";
 import { decodeJwtToken } from "../middleware/jwt.service";
 
@@ -83,7 +84,7 @@ export default {
           email,
           password,
         })
-        const savedUser = await newUser.save()
+        const savedUser: userData = await newUser.save()
         const userId = savedUser._id.toString() //retrieving the id from mongodb
 
         otp = await sendOTPEmail(email)//send OTP function
@@ -204,4 +205,3 @@ export default {
    }
   }
 }
-
