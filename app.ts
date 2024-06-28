@@ -24,9 +24,11 @@ db.on('error', console.error.bind(console, 'MongoDB connection error:'));
 // Define routes
 import authRouter from "./routes/authRoutes";
 import PartnersRouter from "./routes/partnersRoute";
+import ConsultRouter from "./routes/consultRoute";
 
 app.use('/auth', authRouter)
 app.use('/partners', PartnersRouter)
+app.use('/consult', ConsultRouter)
 
 // Start the server Listening to the port
 const PORT:number = process.env['PORT']? parseInt(process.env['PORT']) : 4000 
